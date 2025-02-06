@@ -334,7 +334,12 @@ def run_flow(message: str,
 
 # ------------------ Streamlit App UI ------------------
 
-st.logo(".static/Logo-Blue-Indeed.png", size="large", link="https://www.indeed-innovation.com/")
+ICON_BLUE = ".static/Logo-Blue-Indeed.png"
+ICON_WHITE = ".static/Logo-White-Indeed.png"
+logo_options = [ICON_BLUE, ICON_WHITE]
+
+
+st.logo(ICON_BLUE, icon_image=ICON_WHITE, size="large", link="https://www.indeed-innovation.com/")
 st.set_page_config(page_icon="🌍", layout="wide")
 
 def icon(emoji: str):
@@ -373,13 +378,22 @@ with st.sidebar:
         [data-testid="stTextInput"] input {
             color: white !important;
         }
-        /* Override the text color for st.date_input fields */
-        [data-testid="stDateInput"] input {
-            color: white !important;
+        /* Style the form container (box) */
+        [data-testid="stForm"] {
+            background-color: #E3FFCC !important;  /* Light blue-gray background */
+            border: 1px solid #FFFFFF !important;  /* Blue border */
+            border-radius: 10px !important;  /* Rounded corners */
+            padding: 15px !important;  /* Space inside the form box */
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5) !important;  /* Soft shadow effect */
         }
         /* Also override the placeholder text color */
         [data-testid="stTextInput"] input::placeholder {
             color: white !important;
+        }
+        /* Style the form submit button */
+        [data-testid="stFormSubmitButton"] button {
+            background-color: #FFFFF !important;
+            border: 1px solid #0D1327 !important;
         }
         </style>
         """,
@@ -390,7 +404,7 @@ with st.sidebar:
         company = st.text_input(
             "which company are you looking for?", placeholder="input company name"
         )
-        submitted = st.form_submit_button("Submit")
+        submitted = st.form_submit_button("🔍Search")
 
 
 # If you want to allow file upload as well, you can use st.file_uploader (optional)
