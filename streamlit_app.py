@@ -19,6 +19,9 @@ except ImportError:
 
 # I need to have this to make an API call via Hugginface Space
 API_KEY = st.secrets["HF_API_KEY"] #os.getenv("HF_API_KEY") 
+ASTRA_KEY = st.secrets["ASTRA_DB_APP_TOKEN"]
+OPENAI_KEY = st.secrets["OPENAI_API_KEY"]
+TAVILY_KEY = st.secrets["TAVILY_API_KEY"]
 
 # Define your API and flow settings
 BASE_API_URL = "https://jeo-jang-langflownew.hf.space"
@@ -70,7 +73,7 @@ TWEAKS = {
     "agent_llm": "OpenAI",
     "api_key": {
             "load_from_db": False,
-            "value": st.secrets["OPENAI_API_KEY"] #os.getenv("OPENAI_API_KEY")
+            "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
         },
     "handle_parsing_errors": True,
     "input_value": "",
@@ -98,7 +101,7 @@ TWEAKS = {
   "OpenAIModel-EkPZv": {
     "api_key": {
             "load_from_db": False,
-            "value": st.secrets["OPENAI_API_KEY"] #os.getenv("OPENAI_API_KEY")
+            "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
         },
     "input_value": "",
     "json_mode": False,
@@ -127,7 +130,7 @@ TWEAKS = {
     "agent_llm": "OpenAI",
     "api_key": {
             "load_from_db": False,
-            "value": st.secrets["OPENAI_API_KEY"] #os.getenv("OPENAI_API_KEY")
+            "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
         },
     "handle_parsing_errors": True,
     "input_value": "",
@@ -155,7 +158,7 @@ TWEAKS = {
   "OpenAIModel-0LBLg": {
     "api_key": {
             "load_from_db": False,
-            "value": st.secrets["OPENAI_API_KEY"] #os.getenv("OPENAI_API_KEY")
+            "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
         },
     "input_value": "",
     "json_mode": False,
@@ -200,7 +203,7 @@ TWEAKS = {
     "search_query": "",
     "search_score_threshold": 0,
     "search_type": "Similarity",
-    "token": "ASTRA_DB_APP_TOKEN"
+    "token": ASTRA_KEY
   },
   "OpenAIEmbeddings-TrLB6": {
     "chunk_size": 1000,
@@ -214,7 +217,10 @@ TWEAKS = {
     "model": "text-embedding-3-small",
     "model_kwargs": {},
     "openai_api_base": "",
-    "openai_api_key": None,
+    "openai_api_key": {
+            "load_from_db": False,
+            "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+        },
     "openai_api_type": "",
     "openai_api_version": "",
     "openai_organization": "",
@@ -257,7 +263,7 @@ TWEAKS = {
     "search_query": "",
     "search_score_threshold": 0,
     "search_type": "Similarity",
-    "token": "ASTRA_DB_APP_TOKEN"
+    "token": ASTRA_KEY
   },
   "OpenAIEmbeddings-OQ2Pp": {
     "chunk_size": 1000,
@@ -271,7 +277,10 @@ TWEAKS = {
     "model": "text-embedding-3-small",
     "model_kwargs": {},
     "openai_api_base": "",
-    "openai_api_key": None,
+    "openai_api_key": {
+            "load_from_db": False,
+            "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+        },
     "openai_api_type": "",
     "openai_api_version": "",
     "openai_organization": "",
@@ -291,7 +300,10 @@ TWEAKS = {
     "add_current_date_tool": True,
     "agent_description": "A helpful assistant with access to the following tools:",
     "agent_llm": "OpenAI",
-    "api_key": None,
+    "api_key": {
+            "load_from_db": False,
+            "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+        },
     "handle_parsing_errors": True,
     "input_value": "",
     "json_mode": False,
@@ -312,7 +324,10 @@ TWEAKS = {
     "verbose": True
   },
   "OpenAIModel-2cpDG": {
-    "api_key": None,
+    "api_key": {
+        "load_from_db": False,
+        "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+    },
     "input_value": "",
     "json_mode": False,
     "max_tokens": None,
@@ -334,7 +349,10 @@ TWEAKS = {
     "text2": ""
   },
   "OpenAIModel-mCWYv": {
-    "api_key": None,
+    "api_key": {
+        "load_from_db": False,
+        "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+    },
     "input_value": "",
     "json_mode": False,
     "max_tokens": None,
@@ -364,7 +382,10 @@ TWEAKS = {
     "add_current_date_tool": True,
     "agent_description": "A helpful assistant with access to the following tools:",
     "agent_llm": "OpenAI",
-    "api_key": None,
+    "api_key": {
+            "load_from_db": False,
+            "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+        },
     "handle_parsing_errors": True,
     "input_value": "",
     "json_mode": False,
@@ -389,7 +410,10 @@ TWEAKS = {
     "tool_placeholder": ""
   },
   "OpenAIModel-ylJtq": {
-    "api_key": None,
+    "api_key": {
+        "load_from_db": False,
+        "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+    },
     "input_value": "",
     "json_mode": False,
     "max_tokens": None,
@@ -433,7 +457,7 @@ TWEAKS = {
     "search_query": "",
     "search_score_threshold": 0,
     "search_type": "Similarity",
-    "token": "ASTRA_DB_APP_TOKEN"
+    "token": ASTRA_KEY
   },
   "OpenAIEmbeddings-vkK9L": {
     "chunk_size": 1000,
@@ -447,7 +471,10 @@ TWEAKS = {
     "model": "text-embedding-3-small",
     "model_kwargs": {},
     "openai_api_base": "",
-    "openai_api_key": None,
+    "openai_api_key": {
+            "load_from_db": False,
+            "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+        },
     "openai_api_type": "",
     "openai_api_version": "",
     "openai_organization": "",
@@ -467,7 +494,10 @@ TWEAKS = {
     "add_current_date_tool": True,
     "agent_description": "A helpful assistant with access to the following tools:",
     "agent_llm": "OpenAI",
-    "api_key": None,
+    "api_key": {
+            "load_from_db": False,
+            "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+        },
     "handle_parsing_errors": True,
     "input_value": "",
     "json_mode": False,
@@ -488,7 +518,10 @@ TWEAKS = {
     "verbose": True
   },
   "OpenAIModel-49lhr": {
-    "api_key": None,
+    "api_key": {
+        "load_from_db": False,
+        "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+    },
     "input_value": "",
     "json_mode": False,
     "max_tokens": None,
@@ -518,7 +551,10 @@ TWEAKS = {
     "add_current_date_tool": True,
     "agent_description": "A helpful assistant with access to the following tools:",
     "agent_llm": "OpenAI",
-    "api_key": None,
+    "api_key": {
+            "load_from_db": False,
+            "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+        },
     "handle_parsing_errors": True,
     "input_value": "",
     "json_mode": False,
@@ -543,7 +579,10 @@ TWEAKS = {
     "tool_placeholder": ""
   },
   "OpenAIModel-u1Lal": {
-    "api_key": None,
+    "api_key": {
+        "load_from_db": False,
+        "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+    },
     "input_value": "",
     "json_mode": False,
     "max_tokens": None,
@@ -587,7 +626,7 @@ TWEAKS = {
     "search_query": "",
     "search_score_threshold": 0,
     "search_type": "Similarity",
-    "token": "ASTRA_DB_APP_TOKEN"
+    "token": ASTRA_KEY
   },
   "OpenAIEmbeddings-NIj9H": {
     "chunk_size": 1000,
@@ -601,7 +640,10 @@ TWEAKS = {
     "model": "text-embedding-3-small",
     "model_kwargs": {},
     "openai_api_base": "",
-    "openai_api_key": None,
+    "openai_api_key": {
+            "load_from_db": False,
+            "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+        },
     "openai_api_type": "",
     "openai_api_version": "",
     "openai_organization": "",
@@ -621,7 +663,10 @@ TWEAKS = {
     "add_current_date_tool": True,
     "agent_description": "A helpful assistant with access to the following tools:",
     "agent_llm": "OpenAI",
-    "api_key": None,
+    "api_key": {
+            "load_from_db": False,
+            "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+        },
     "handle_parsing_errors": True,
     "input_value": "",
     "json_mode": False,
@@ -642,7 +687,10 @@ TWEAKS = {
     "verbose": True
   },
   "OpenAIModel-E4bwI": {
-    "api_key": None,
+    "api_key": {
+        "load_from_db": False,
+        "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+    },
     "input_value": "",
     "json_mode": False,
     "max_tokens": None,
@@ -672,7 +720,10 @@ TWEAKS = {
     "add_current_date_tool": True,
     "agent_description": "A helpful assistant with access to the following tools:",
     "agent_llm": "OpenAI",
-    "api_key": None,
+    "api_key": {
+            "load_from_db": False,
+            "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+        },
     "handle_parsing_errors": True,
     "input_value": "",
     "json_mode": False,
@@ -697,7 +748,10 @@ TWEAKS = {
     "tool_placeholder": ""
   },
   "OpenAIModel-59onK": {
-    "api_key": None,
+    "api_key": {
+        "load_from_db": False,
+        "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+    },
     "input_value": "",
     "json_mode": False,
     "max_tokens": None,
@@ -741,7 +795,7 @@ TWEAKS = {
     "search_query": "",
     "search_score_threshold": 0,
     "search_type": "Similarity",
-    "token": "ASTRA_DB_APP_TOKEN"
+    "token": ASTRA_KEY
   },
   "OpenAIEmbeddings-Xs2c1": {
     "chunk_size": 1000,
@@ -755,7 +809,10 @@ TWEAKS = {
     "model": "text-embedding-3-small",
     "model_kwargs": {},
     "openai_api_base": "",
-    "openai_api_key": None,
+    "openai_api_key": {
+            "load_from_db": False,
+            "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+        },
     "openai_api_type": "",
     "openai_api_version": "",
     "openai_organization": "",
@@ -775,7 +832,10 @@ TWEAKS = {
     "add_current_date_tool": True,
     "agent_description": "A helpful assistant with access to the following tools:",
     "agent_llm": "OpenAI",
-    "api_key": None,
+    "api_key": {
+            "load_from_db": False,
+            "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+        },
     "handle_parsing_errors": True,
     "input_value": "",
     "json_mode": False,
@@ -796,7 +856,10 @@ TWEAKS = {
     "verbose": True
   },
   "OpenAIModel-dWbCV": {
-    "api_key": None,
+    "api_key": {
+        "load_from_db": False,
+        "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+    },
     "input_value": "",
     "json_mode": False,
     "max_tokens": None,
@@ -838,7 +901,10 @@ TWEAKS = {
     "text2": ""
   },
   "OpenAIModel-dyUI5": {
-    "api_key": None,
+    "api_key": {
+        "load_from_db": False,
+        "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+    },
     "input_value": "",
     "json_mode": False,
     "max_tokens": 0,
@@ -866,10 +932,13 @@ TWEAKS = {
     "tool_placeholder": ""
   },
   "TavilySearchComponent-DWGdg": {
-    "api_key": None,
+    "api_key": {
+        "load_from_db": False,
+        "value": TAVILY_KEY
+    },
     "include_answer": True,
     "include_images": True,
-    "max_results": 5,
+    "max_results": 2, #default 5
     "query": "",
     "search_depth": "advanced",
     "topic": "general",
@@ -891,10 +960,13 @@ TWEAKS = {
     ]
   },
   "TavilySearchComponent-Lt34r": {
-    "api_key": None,
+    "api_key": {
+        "load_from_db": False,
+        "value": TAVILY_KEY
+    },
     "include_answer": True,
     "include_images": True,
-    "max_results": 5,
+    "max_results": 2, #default 5
     "query": "",
     "search_depth": "advanced",
     "topic": "general",
@@ -916,10 +988,13 @@ TWEAKS = {
     ]
   },
   "TavilySearchComponent-DLZrC": {
-    "api_key": None,
+    "api_key": {
+        "load_from_db": False,
+        "value": TAVILY_KEY
+    },
     "include_answer": True,
     "include_images": True,
-    "max_results": 5,
+    "max_results": 2, #default 5
     "query": "",
     "search_depth": "advanced",
     "topic": "general",
@@ -941,10 +1016,13 @@ TWEAKS = {
     ]
   },
   "TavilySearchComponent-cJDx1": {
-    "api_key": None,
+    "api_key": {
+        "load_from_db": False,
+        "value": TAVILY_KEY
+    },
     "include_answer": True,
     "include_images": True,
-    "max_results": 5,
+    "max_results": 2, #default 5
     "query": "",
     "search_depth": "advanced",
     "topic": "general",
@@ -966,10 +1044,13 @@ TWEAKS = {
     ]
   },
   "TavilySearchComponent-xSWhx": {
-    "api_key": None,
+    "api_key": {
+        "load_from_db": False,
+        "value": TAVILY_KEY
+    },
     "include_answer": True,
     "include_images": True,
-    "max_results": 5,
+    "max_results": 2, #default 5
     "query": "",
     "search_depth": "advanced",
     "topic": "general",
@@ -994,7 +1075,10 @@ TWEAKS = {
     "add_current_date_tool": True,
     "agent_description": "A helpful assistant with access to the following tools:",
     "agent_llm": "OpenAI",
-    "api_key": None,
+    "api_key": {
+            "load_from_db": False,
+            "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
+        },
     "handle_parsing_errors": True,
     "input_value": "",
     "json_mode": False,
@@ -1148,16 +1232,7 @@ def run_flow(message: str,
 st.title("Langflow Streamlit Tester")
 
 # Create a text input box for the user's message
-user_message = st.text_input("Enter your message:")
-
-# Create text input selection and boxes for the pormpts
-language_selection = st.selectbox(
-    "Which language should the agent use?",
-    ("English", "German", "French"),
-    placeholder="Select post language...",
-)
-
-tone_selection = st.text_input("Enter the tone of the post:")
+user_message = st.text_input("Enter company name:")
 
 
 # If you want to allow file upload as well, you can use st.file_uploader (optional)
@@ -1166,9 +1241,8 @@ tone_selection = st.text_input("Enter the tone of the post:")
 if st.button("Submit"):
     if user_message:
         # Update the tweak for the chat input with the user's message
-        TWEAKS["ChatInput-8zFTw"]["input_value"] = user_message
-        TWEAKS["TextInput-X18Sl"]["input_value"] = language_selection
-        TWEAKS["TextInput-DnWUD"]["input_value"] = tone_selection
+        TWEAKS["ChatInput-PKiJr"]["input_value"] = user_message
+
 
         # Optionally, if you support file uploads via langflow's upload_file function,
         # you can add logic here to update the tweaks accordingly.
