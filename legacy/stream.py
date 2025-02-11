@@ -2,55 +2,28 @@ import json
 import os
 import warnings
 from typing import Optional
-
 import requests
 import streamlit as st
-from dotenv import load_dotenv
 
-# Optionally import langflow's upload function
+# For optional file-upload to Langflow:
 try:
     from langflow.load import upload_file
 except ImportError:
-    warnings.warn("Langflow provides a function to help you upload files to the flow. Please install langflow to use it.")
+    warnings.warn("Please install langflow if you want to use upload_file.")
     upload_file = None
 
-# Load environment variables
-#load_dotenv()
+############################
+# 1) CONFIG & TWEAKS SETUP
+############################
+BASE_API_URL = "https://jeo-jang-langflownew.hf.space"
+FLOW_ID = "958fd1d6-d2d1-4fee-98bf-235fccb0b89b" 
+ENDPOINT = ""  # or a named endpoint, if you have one
 
-# I need to have this to make an API call via Hugginface Space
-API_KEY = st.secrets["HF_API_KEY"] #os.getenv("HF_API_KEY") 
+# Retrieve secrets (Streamlit)
+API_KEY = st.secrets["HF_API_KEY"]
 ASTRA_KEY = st.secrets["ASTRA_DB_APP_TOKEN"]
 OPENAI_KEY = st.secrets["OPENAI_API_KEY"]
 TAVILY_KEY = st.secrets["TAVILY_API_KEY"]
-
-# Define your API and flow settings
-BASE_API_URL = "https://jeo-jang-langflownew.hf.space"
-FLOW_ID = "958fd1d6-d2d1-4fee-98bf-235fccb0b89b" # Change new FLOW ID if the app is rebuilt
-ENDPOINT = ""  # Set to empty string if not using a specific endpoint
-
-# Define your tweaks dictionary. Notice that we set the user input to an empty string.
-# Later, we update it with the value from the text input. Please see below with TWEAKS[blah blah][blah blah]
-# TWEAKS = {
-#     "ChatInput-8zFTw": {
-#         "background_color": "",
-#         "chat_icon": "",
-#         "files": "",
-#         "input_value": "",  #---!----This will be updated with the user's input------------!
-#         "sender": "User",
-#         "sender_name": "User",
-#         "session_id": "",
-#         "should_store_message": True,
-#         "text_color": ""
-#     },
-#----------Change the TWEAK of the OpenAIModel too!----------------!
-    # "OpenAIModel-W0BHu": {
-    #     "api_key": {
-    #         "load_from_db": False,
-    #         "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
-    #     },
-
-
-
 
 TWEAKS = {
   "ChatInput-PKiJr": {
@@ -334,183 +307,140 @@ TWEAKS = {
   }
 }
 
-def run_flow(message: str,
-             endpoint: str,
-             output_type: str = "chat",
-             input_type: str = "chat",
-             tweaks: Optional[dict] = None,
-             api_key: Optional[str] = None) -> dict:
+############################
+# 2) INITIATE SESSION
+############################
+def initiate_session(
+    endpoint: str,
+    tweaks: dict,
+    stream: bool = False,
+    api_key: Optional[str] = None,
+):
     """
-    Run a flow with the given parameters.
+    POST to the HF Space run endpoint, requesting a stream if `stream=True`.
+    Returns the JSON response with 'session_id' and possibly 'stream_url'.
     """
-    api_url = f"{BASE_API_URL}/api/v1/run/{endpoint}" #f"{BASE_API_URL}/api/v1/run/{endpoint}"
+    url = f"{BASE_API_URL}/api/v1/run/{endpoint}?stream={str(stream).lower()}"
+
     payload = {
-        "output_type": output_type,
-        "input_type": input_type,
+        "input_type": "chat",
+        "output_type": "chat",
+        "tweaks": tweaks,
     }
-    if tweaks:
-        payload["tweaks"] = tweaks
-    headers = {"x-api-key": api_key} if api_key else None
-    response = requests.post(api_url, json=payload, headers=headers)
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["x-api-key"] = api_key
+
+    response = requests.post(url, json=payload, headers=headers, timeout=None)
+    response.raise_for_status()
     return response.json()
 
-# ------------------ Streamlit App UI ------------------
-
-ICON_BLUE = ".static/Logo-Blue-Indeed.png"
-ICON_WHITE = ".static/Logo-White-Indeed.png"
-
-# ----------Recursive json output----------
-def st_stream_json_output(json_data):
-    """
-    A helper function to display nested JSON data in a Streamlit app.
+############################
+# 3) STREAMING CHUNKS
+############################
+def stream_chunks(stream_url: str, session_id: str, api_key: Optional[str] = None):
+    full_url = f"{BASE_API_URL}{stream_url}"
+    params = {"session_id": session_id}
+    headers = {"x-api-key": api_key} if api_key else {}
     
-    1) Displays the entire JSON structure via st.json
-    2) Recursively finds 'text' fields and writes them out line by line.
+    with requests.get(full_url, params=params, headers=headers, stream=True) as r:
+        r.raise_for_status()
+        for line in r.iter_lines():
+            if not line:
+                # Empty line (heartbeat). Skip it.
+                continue
+
+            decoded_line = line.decode("utf-8", errors="ignore").strip()
+            # Only parse lines that start with "data:"
+            if not decoded_line.startswith("data: "):
+                # Could be "event:" or "retry:" lines
+                continue
+
+            # Remove 'data: ' prefix
+            data_str = decoded_line[len("data: "):].strip()
+            try:
+                payload = json.loads(data_str)
+            except json.JSONDecodeError:
+                # Not valid JSON—possibly a partial line or SSE control line.
+                continue
+
+            chunk_text = payload.get("chunk")
+            if chunk_text:
+                yield chunk_text
+
+############################
+# 4) HIGH-LEVEL RUN (STREAM)
+############################
+def run_flow_stream_in_chunks(
+    endpoint: str,
+    tweaks: dict,
+    api_key: Optional[str] = None,
+):
     """
+    Combines steps:
+    1) initiate_session with stream=True
+    2) if successful, parse the returned JSON for `stream_url`
+    3) call `stream_chunks` to yield partial text
+    """
+    init_json = initiate_session(endpoint, tweaks, stream=True, api_key=api_key)
 
-    # First show the entire JSON (if it's a Python dict, it will be displayed as JSON)
-    st.subheader("Raw JSON Response")
-    st.json(json_data)
+    # Typically we have: init_json["session_id"], init_json["outputs"][0]["outputs"][0]["artifacts"]["stream_url"]
+    session_id = init_json.get("session_id", "")
+    if not session_id:
+        raise ValueError("No session_id returned in init response")
 
-    # Then show all "text"-like fields found (or any custom logic you want).
-    st.subheader("Text Fields Found")
-    
-    def recursive_parse(data, level=0):
-        """
-        Recursively explore nested structures:
-          - If a dict, iterate its key-value pairs.
-          - If a list, iterate its items.
-          - Whenever you encounter 'text' (and it's a string), print it via st.write.
-        """
-        if isinstance(data, dict):
-            for k, v in data.items():
-                if k == "text" and isinstance(v, str):
-                    # or check other keys like "message" if you need them
-                    st.write(f"• {v}")
-                else:
-                    recursive_parse(v, level+1)
-        elif isinstance(data, list):
-            for item in data:
-                recursive_parse(item, level+1)
-        # If it's neither dict nor list, do nothing special.
+    # Dig out the first artifact with a stream_url
+    stream_url = None
+    outputs = init_json.get("outputs", [])
+    if outputs and "outputs" in outputs[0]:
+        first_output = outputs[0]["outputs"][0]
+        artifacts = first_output.get("artifacts", {})
+        stream_url = artifacts.get("stream_url")
+    if not stream_url:
+        # That means your flow might not have produced a stream_url
+        # Possibly your LLM node isn't set to "stream=True"
+        raise ValueError("No 'stream_url' found in the init JSON. Make sure your flow is streaming.")
 
-    recursive_parse(json_data)
+    # Now stream partial text
+    for chunk in stream_chunks(stream_url, session_id, api_key=api_key):
+        yield chunk
 
-
-st.logo(ICON_BLUE, icon_image=ICON_WHITE, size="large", link="https://www.indeed-innovation.com/")
+############################
+# 5) STREAMLIT UI
+############################
 st.set_page_config(page_icon="🌍", layout="wide")
-
-def icon(emoji: str):
-    """Shows an emoji as a Notion-style page icon."""
-    st.write(
-        f'<span style="font-size: 78px; line-height: 1">{emoji}</span>',
-        unsafe_allow_html=True,
-    )
-
-icon("Circularity Index Researcher")
-
-# # Create a text input box for the user's message
-# user_message = st.text_input("Enter company name:")
-
-st.subheader(
-        "Ten specialized agents collaborate with you to analyze and interpret complex sustainability reports packed with data.",
-        divider="rainbow",
-        anchor=False
-    )
-
+st.title("Langflow + HF Space: Streaming Example with TWEAKS")
 
 with st.sidebar:
-    # Inject custom CSS for sidebar styling
-    st.markdown(
-        """
-        <style>
-        /* Set the sidebar background color */
-        [data-testid="stSidebar"] {
-            background-color: #DFE3F2;
-        }
-        /* Set the font color for all elements inside the sidebar */
-        [data-testid="stSidebar"] * {
-            color: #0D1327 !important;
-        }
-        /* Override the text color for st.text_input fields */
-        [data-testid="stTextInput"] input {
-            color: white !important;
-        }
-        /* Style the form container (box) */
-        [data-testid="stForm"] {
-            background-color: #E3FFCC !important;  /* Light blue-gray background */
-            border: 1px solid #FFFFFF !important;  /* Blue border */
-            border-radius: 10px !important;  /* Rounded corners */
-            padding: 15px !important;  /* Space inside the form box */
-            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5) !important;  /* Soft shadow effect */
-        }
-        /* Also override the placeholder text color */
-        [data-testid="stTextInput"] input::placeholder {
-            color: white !important;
-        }
-        /* Style the form submit button */
-        [data-testid="stFormSubmitButton"] button {
-            background-color: #FFFFF !important;
-            border: 1px solid #0D1327 !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-    st.header("👇 Enter details")
+    st.header("Tweak the input")
     with st.form("my_form"):
-        company = st.text_input(
-            "which company are you looking for?", placeholder="input company name"
-        )
-        submitted = st.form_submit_button("🔍Search")
-
-
-# If you want to allow file upload as well, you can use st.file_uploader (optional)
-# uploaded_file = st.file_uploader("Upload a file", type=["txt", "csv", "json"])
+        company = st.text_input("Enter a company name:", "vonovia")
+        submitted = st.form_submit_button("Run Flow")
 
 if submitted:
-    if company:
-        # Update the tweak for the chat input with the user's message
-        TWEAKS["ChatInput-PKiJr"]["input_value"] = company
+    # 1) Update TWEAKS with the user's input
+    TWEAKS["ChatInput-PKiJr"]["input_value"] = company
+    # If your flow also uses "Prompt-WAIhH" -> "company", then set TWEAKS["Prompt-WAIhH"]["company"] = company
 
+    # 2) Provide some streaming UI
+    st.write("**Streaming partial response**:")
+    chunk_container = st.empty()  # a placeholder to show partial text
+    full_response = ""
 
-        # Optionally, if you support file uploads via langflow's upload_file function,
-        # you can add logic here to update the tweaks accordingly.
-        # For example:
-        # if uploaded_file and upload_file:
-        #     # Save the file temporarily and call upload_file
-        #     with open("temp_file", "wb") as f:
-        #         f.write(uploaded_file.getbuffer())
-        #     TWEAKS = upload_file(
-        #         file_path="temp_file",
-        #         host=BASE_API_URL,
-        #         flow_id=ENDPOINT or FLOW_ID,
-        #         components=["<component_name>"],
-        #         tweaks=TWEAKS
-        #     )
-
-        # Run the flow with the user input and updated tweaks
-        result = run_flow(
-            message=company,
+    try:
+        for chunk_text in run_flow_stream_in_chunks(
             endpoint=ENDPOINT or FLOW_ID,
             tweaks=TWEAKS,
-            api_key=API_KEY
-        )
+            api_key=API_KEY,
+        ):
+            # Accumulate the chunk
+            full_response += chunk_text
+            # Show partial response in real-time
+            chunk_container.markdown(f"```\n{full_response}\n```")
+        st.success("Streaming complete!")
+    except Exception as e:
+        st.error(f"Error while streaming: {e}")
 
-        # Save the entire `result` to a JSON file
-        # with open("result.json", "w", encoding="utf-8") as f:
-        #     json.dump(result, f, indent=2)
+    # Optionally, parse JSON from final response if your flow returns a final JSON.
+    # But if it's purely chunk-based, you already have everything in `full_response`.
 
-        # Extract the tweet text from the nested JSON structure.
-        # The exact path depends on the structure of your response.
-        # Based on the response you provided, one way might be:
-        try:
-            tweet_text = result["outputs"][0]["outputs"][0]["results"]["message"]["text"]
-        except (KeyError, IndexError) as e:
-            tweet_text = "Error parsing text from response: " + str(e)
-
-        # Now display the tweet text using st.write or st.markdown
-        st.subheader("Output")
-        #st.markdown(tweet_text)
-        st_stream_json_output(result)
-        

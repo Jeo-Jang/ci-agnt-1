@@ -4,7 +4,10 @@ import warnings
 from typing import Optional
 
 import requests
+import threading
 import streamlit as st
+import random
+import time
 from dotenv import load_dotenv
 
 # Optionally import langflow's upload function
@@ -24,33 +27,9 @@ OPENAI_KEY = st.secrets["OPENAI_API_KEY"]
 TAVILY_KEY = st.secrets["TAVILY_API_KEY"]
 
 # Define your API and flow settings
-BASE_API_URL = "https://jeo-jang-langflownew.hf.space"
-FLOW_ID = "958fd1d6-d2d1-4fee-98bf-235fccb0b89b" # Change new FLOW ID if the app is rebuilt
+BASE_API_URL = st.secrets["BASE_API_URL"]
+FLOW_ID = st.secrets["FLOW_ID"] # Change new FLOW ID if the app is rebuilt
 ENDPOINT = ""  # Set to empty string if not using a specific endpoint
-
-# Define your tweaks dictionary. Notice that we set the user input to an empty string.
-# Later, we update it with the value from the text input. Please see below with TWEAKS[blah blah][blah blah]
-# TWEAKS = {
-#     "ChatInput-8zFTw": {
-#         "background_color": "",
-#         "chat_icon": "",
-#         "files": "",
-#         "input_value": "",  #---!----This will be updated with the user's input------------!
-#         "sender": "User",
-#         "sender_name": "User",
-#         "session_id": "",
-#         "should_store_message": True,
-#         "text_color": ""
-#     },
-#----------Change the TWEAK of the OpenAIModel too!----------------!
-    # "OpenAIModel-W0BHu": {
-    #     "api_key": {
-    #         "load_from_db": False,
-    #         "value": OPENAI_KEY #os.getenv("OPENAI_API_KEY")
-    #     },
-
-
-
 
 TWEAKS = {
   "ChatInput-PKiJr": {
@@ -117,7 +96,7 @@ TWEAKS = {
     "temperature": 0.1
   },
   "Prompt-coXDM": {
-    "template": "\n\nRESEARCH PLAN: {previous_response}\n\nUse Tavily Search to investigate the queries and analyse the findings\nFocus on academic and reliable sources.\n\nSteps:\n1. Search using provided queries\n2. Analyse search results\n3. Verify source credibility\n4. Extract key findings\n\nFormat findings as:\nTitle: [Company's name] Circular End Target Category 1 Efficiency and Optimisation\n\nEvaluating the Each Targets into either:\n-Quantitative: \n-Qualitative: \n-No pledge: \nAssign a rating (5, 2, or 1) based on:\n-5: Clear, quantitative pledge for full circularity by a specific year.\n-2: Qualitative pledge without specific metrics or deadlines.\n-1: No mention of a circular end target at all.\nAssign the impact factor(IF) based on:\n-3: High, Global roll out of activities\n-2: Medium, limited to one product category or business unit or country\n-1: Low, Just on a pilot scale with no real impact compared to the companies revenue, co2 emission, etc.\n\n\n\nProvide evidence (quotes or references to the report) justifying your rating.\n\nCompile your findings with following format:\n[Company Name]\n[Tabular format]:\n-Targets Names\n-Targets Descriptions\n-Target Values (time and/or %)\n-Evidence Activities\n-Achieved Successes\n-The assigned Impact Factors (IF = 1, 2, or 3)\n[Explanation and Sources for IF ratings]",
+    "template": "\n\nRESEARCH PLAN: {previous_response}\n\nUse Tavily Search to investigate the queries and analyse the findings\nFocus on academic and reliable sources.\n\nSteps:\n1. Search using provided queries\n2. Analyse search results\n3. Verify source credibility\n4. Extract key findings\n\nFormat findings as:\nTitle: [Company's name] Circular End Target Category 1 Efficiency and Optimisation\n\nEvaluating the Each Targets into either:\n-Quantitative: \n-Qualitative: \n-No pledge: \nAssign a rating (5, 2, or 1) based on:\n-5: Clear, quantitative pledge for full circularity by a specific year.\n-2: Qualitative pledge without specific metrics or deadlines.\n-1: No mention of a circular end target at all.\nAssign the impact factor(IF) based on:\n-3: High, Global roll out of activities\n-2: Medium, limited to one product category or business unit or country\n-1: Low, Just on a pilot scale with no real impact compared to the companies revenue, co2 emission, etc.\n\n\n\nProvide evidence (url, quotes or references to the report) justifying your rating.\n\nCompile your findings with following format:\n[Company Name]\n[Tabular format]:\n-Targets Names\n-Targets Descriptions\n-Target Values (time and/or %)\n-Evidence Activities\n-Achieved Successes\n-The assigned Impact Factors (IF = 1, 2, or 3)\n[Explanation and Sources for IF ratings]",
     "tool_placeholder": "",
     "previous_response": ""
   },
@@ -310,7 +289,7 @@ TWEAKS = {
     "template": "{sender_name}: {text}",
     "verbose": True
   },
-  "ChatOutput-928EC": {
+  "ChatOutput-PRUPM": {
     "background_color": "",
     "chat_icon": "",
     "data_template": "{text}",
@@ -321,7 +300,7 @@ TWEAKS = {
     "should_store_message": True,
     "text_color": ""
   },
-  "ChatOutput-WoNda": {
+  "ChatOutput-ZyR0w": {
     "background_color": "",
     "chat_icon": "",
     "data_template": "{text}",
@@ -334,6 +313,9 @@ TWEAKS = {
   }
 }
 
+##########################################
+# Flow-Related Functions
+##########################################
 def run_flow(message: str,
              endpoint: str,
              output_type: str = "chat",
@@ -341,9 +323,9 @@ def run_flow(message: str,
              tweaks: Optional[dict] = None,
              api_key: Optional[str] = None) -> dict:
     """
-    Run a flow with the given parameters.
+    Synchronous call to your Hugging Face Space API.
     """
-    api_url = f"{BASE_API_URL}/api/v1/run/{endpoint}" #f"{BASE_API_URL}/api/v1/run/{endpoint}"
+    api_url = f"{BASE_API_URL}/api/v1/run/{endpoint}"
     payload = {
         "output_type": output_type,
         "input_type": input_type,
@@ -351,104 +333,125 @@ def run_flow(message: str,
     if tweaks:
         payload["tweaks"] = tweaks
     headers = {"x-api-key": api_key} if api_key else None
+
     response = requests.post(api_url, json=payload, headers=headers)
     return response.json()
 
-# ------------------ Streamlit App UI ------------------
+##########################################
+# Deduped Agent Steps
+##########################################
+def find_unique_agent_steps(data, seen_blocks=None):
+    """
+    Recursively search the JSON for 'content_blocks' with title='Agent Steps'.
+    Deduplicate them by a signature so we only get each unique block once.
+    """
+    if seen_blocks is None:
+        seen_blocks = set()
 
-ICON_BLUE = ".static/Logo-Blue-Indeed.png"
-ICON_WHITE = ".static/Logo-White-Indeed.png"
+    agent_steps_list = []
 
-# ----------Recursive json output----------
+    if isinstance(data, dict):
+        content_blocks = data.get('content_blocks')
+        if isinstance(content_blocks, list):
+            for block in content_blocks:
+                if block.get('title') == "Agent Steps":
+                    contents = block.get('contents', [])
+                    signature = make_block_signature(contents)
+                    if signature not in seen_blocks:
+                        seen_blocks.add(signature)
+                        agent_steps_list.append(contents)
+
+        for val in data.values():
+            agent_steps_list.extend(find_unique_agent_steps(val, seen_blocks=seen_blocks))
+
+    elif isinstance(data, list):
+        for element in data:
+            agent_steps_list.extend(find_unique_agent_steps(element, seen_blocks=seen_blocks))
+
+    return agent_steps_list
+
+def make_block_signature(contents):
+    """
+    Combine all 'text' fields of each step item into one string
+    to detect duplicates.
+    """
+    lines = []
+    for step in contents:
+        txt = step.get('text', '').strip()
+        if txt:
+            lines.append(txt)
+    # Return a single string signature
+    return "\n".join(lines)
+
+##########################################
+# JSON Display
+##########################################
 def st_stream_json_output(json_data):
     """
-    A helper function to display nested JSON data in a Streamlit app.
-    
-    1) Displays the entire JSON structure via st.json
-    2) Recursively finds 'text' fields and writes them out line by line.
+    1) Show raw JSON
+    2) Then recursively search 'text' fields
     """
-
-    # First show the entire JSON (if it's a Python dict, it will be displayed as JSON)
     st.subheader("Raw JSON Response")
     st.json(json_data)
 
-    # Then show all "text"-like fields found (or any custom logic you want).
     st.subheader("Text Fields Found")
-    
-    def recursive_parse(data, level=0):
-        """
-        Recursively explore nested structures:
-          - If a dict, iterate its key-value pairs.
-          - If a list, iterate its items.
-          - Whenever you encounter 'text' (and it's a string), print it via st.write.
-        """
+    def recursive_parse(data):
         if isinstance(data, dict):
             for k, v in data.items():
                 if k == "text" and isinstance(v, str):
-                    # or check other keys like "message" if you need them
                     st.write(f"• {v}")
                 else:
-                    recursive_parse(v, level+1)
+                    recursive_parse(v)
         elif isinstance(data, list):
             for item in data:
-                recursive_parse(item, level+1)
-        # If it's neither dict nor list, do nothing special.
+                recursive_parse(item)
 
     recursive_parse(json_data)
 
+##########################################
+# STREAMLIT UI
+##########################################
+ICON_BLUE = ".static/Logo-Blue-Indeed.png"
+ICON_WHITE = ".static/Logo-White-Indeed.png"
 
 st.logo(ICON_BLUE, icon_image=ICON_WHITE, size="large", link="https://www.indeed-innovation.com/")
 st.set_page_config(page_icon="🌍", layout="wide")
 
 def icon(emoji: str):
-    """Shows an emoji as a Notion-style page icon."""
-    st.write(
-        f'<span style="font-size: 78px; line-height: 1">{emoji}</span>',
-        unsafe_allow_html=True,
-    )
+    st.write(f'<span style="font-size: 78px; line-height: 1">{emoji}</span>', unsafe_allow_html=True)
 
 icon("Circularity Index Researcher")
 
-# # Create a text input box for the user's message
-# user_message = st.text_input("Enter company name:")
-
 st.subheader(
-        "Ten specialized agents collaborate with you to analyze and interpret complex sustainability reports packed with data.",
-        divider="rainbow",
-        anchor=False
-    )
+    "Ten specialized agents collaborate with you to analyze and interpret complex sustainability reports packed with data.",
+    divider="rainbow",
+    anchor=False
+)
 
-
+# Sidebar styling
 with st.sidebar:
-    # Inject custom CSS for sidebar styling
     st.markdown(
         """
         <style>
-        /* Set the sidebar background color */
         [data-testid="stSidebar"] {
             background-color: #DFE3F2;
         }
-        /* Set the font color for all elements inside the sidebar */
         [data-testid="stSidebar"] * {
             color: #0D1327 !important;
         }
-        /* Override the text color for st.text_input fields */
         [data-testid="stTextInput"] input {
             color: white !important;
         }
-        /* Style the form container (box) */
         [data-testid="stForm"] {
-            background-color: #E3FFCC !important;  /* Light blue-gray background */
-            border: 1px solid #FFFFFF !important;  /* Blue border */
-            border-radius: 10px !important;  /* Rounded corners */
-            padding: 15px !important;  /* Space inside the form box */
-            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5) !important;  /* Soft shadow effect */
+            background-color: #E3FFCC !important;
+            border: 1px solid #FFFFFF !important;
+            border-radius: 10px !important;
+            padding: 15px !important;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5) !important;
         }
-        /* Also override the placeholder text color */
         [data-testid="stTextInput"] input::placeholder {
             color: white !important;
         }
-        /* Style the form submit button */
         [data-testid="stFormSubmitButton"] button {
             background-color: #FFFFF !important;
             border: 1px solid #0D1327 !important;
@@ -459,58 +462,132 @@ with st.sidebar:
     )
     st.header("👇 Enter details")
     with st.form("my_form"):
-        company = st.text_input(
-            "which company are you looking for?", placeholder="input company name"
-        )
+        company = st.text_input("Which company are you looking for?", placeholder="input company name")
         submitted = st.form_submit_button("🔍Search")
 
 
-# If you want to allow file upload as well, you can use st.file_uploader (optional)
-# uploaded_file = st.file_uploader("Upload a file", type=["txt", "csv", "json"])
+##########################################
+# BACKGROUND THREAD + FAKE LOAD
+##########################################
+if submitted and company:
+    # This container holds the final JSON result from the thread
+    result_container = {"data": None}
 
-if submitted:
-    if company:
-        # Update the tweak for the chat input with the user's message
+    def background_run_flow():
         TWEAKS["ChatInput-PKiJr"]["input_value"] = company
-
-
-        # Optionally, if you support file uploads via langflow's upload_file function,
-        # you can add logic here to update the tweaks accordingly.
-        # For example:
-        # if uploaded_file and upload_file:
-        #     # Save the file temporarily and call upload_file
-        #     with open("temp_file", "wb") as f:
-        #         f.write(uploaded_file.getbuffer())
-        #     TWEAKS = upload_file(
-        #         file_path="temp_file",
-        #         host=BASE_API_URL,
-        #         flow_id=ENDPOINT or FLOW_ID,
-        #         components=["<component_name>"],
-        #         tweaks=TWEAKS
-        #     )
-
-        # Run the flow with the user input and updated tweaks
-        result = run_flow(
+        flow_result = run_flow(
             message=company,
             endpoint=ENDPOINT or FLOW_ID,
             tweaks=TWEAKS,
             api_key=API_KEY
         )
+        result_container["data"] = flow_result
 
-        # Save the entire `result` to a JSON file
-        # with open("result.json", "w", encoding="utf-8") as f:
-        #     json.dump(result, f, indent=2)
+    # Start the thread
+    worker_thread = threading.Thread(target=background_run_flow)
+    worker_thread.start()
 
-        # Extract the tweet text from the nested JSON structure.
-        # The exact path depends on the structure of your response.
-        # Based on the response you provided, one way might be:
-        try:
-            tweet_text = result["outputs"][0]["outputs"][0]["results"]["message"]["text"]
-        except (KeyError, IndexError) as e:
-            tweet_text = "Error parsing text from response: " + str(e)
+    # Show "fake" steps while the request is running
+    steps_sequence = [
+        ("initializing...", 4, 6),
+        ("gathering agents...", 4, 6),
+        ("assigning tasks...", 5, 8),
+        ("running agent flow...", 4, 4),
+        ("running agent flow...", 4, 4),
+        ("running agent flow...", 4, 4),
+        ("checking information...", 4, 4),
+        ("checking information...", 4, 4),
+        ("checking information...", 4, 4),
+        ("running agent flow...", 4, 4),
+        ("expanding searches...", 4, 4),
+        ("expanding searches...", 4, 4),
+        ("running agent flow...", 8, 15),
+    ]
+    for step_message, min_sec, max_sec in steps_sequence:
+        if worker_thread.is_alive():
+            st.toast(step_message, icon=":material/hourglass_empty:")
+            time.sleep(random.randint(min_sec, max_sec))
+        else:
+            break
 
-        # Now display the tweet text using st.write or st.markdown
-        st.subheader("Output")
-        #st.markdown(tweet_text)
+    # Ensure the thread is done
+    worker_thread.join()
+
+    # Retrieve the JSON result
+    result = result_container["data"]
+
+    # ---------------------------------------------------------
+    # 1) Identify the final output chunk
+    #    We'll assume it's the last item in result["outputs"][0]["outputs"]
+    # ---------------------------------------------------------
+    outputs_list = result["outputs"][0]["outputs"]
+    # Make sure we have enough items
+    if len(outputs_list) < 3:
+        st.write("Not enough outputs to show final vs. agents.")
+        # Optional: just show entire JSON and return
         st_stream_json_output(result)
-        
+        st.stop()
+
+    # final chunk is the last one
+    final_chunk = outputs_list[-3]  # chunk [-3] --> 0 if indexing 0..1..2
+    # agent1 chunk is the second-to-last
+    agent1_chunk = outputs_list[-2] 
+    # agent2 chunk is the third-to-last
+    agent2_chunk = outputs_list[-1]
+
+
+
+    # ---------------------------------------------------------
+    # 2) Show the final output FIRST
+    # ---------------------------------------------------------
+    st.subheader("Final Output")
+    try: #result["outputs"][0]["outputs"][0]["results"]["message"]["data"]
+        final_output_text = final_chunk["results"]["message"]["text"]
+        st.markdown(final_output_text)
+    except (KeyError, IndexError) as e:
+        st.write(f"Error parsing final output: {e}")
+
+    # ---------------------------------------------------------
+    # 3) Agents in Expanders
+    #    We'll call them "Agent1: AI Web Search" and "Agent2: Document Search"
+    #    We'll show the input + output from each chunk
+    # ---------------------------------------------------------
+    st.write("---")    
+    st.subheader("Agents Info")
+
+    # -- Agent1
+    with st.expander("Agent1: AI Web Search", expanded=False):
+        try:
+            # Show the input
+            # Usually it's in agent1_chunk["results"]["message"] or agent1_chunk["logs"], 
+            # or sometimes "content_blocks"
+            # We'll do a guess:
+            input_for_agent1 = agent1_chunk["results"]["message"]["content_blocks"][0]["contents"][0]["text"]
+
+            # If you have a known path, do that. Example:
+            # input_for_agent1 = agent1_chunk["results"]["message"]["data"]["content_blocks"][0]["contents"][0]["text"]
+            # But that depends on your actual JSON structure.
+            
+            # Show the output
+            agent1_output_text = agent1_chunk["results"]["message"]["text"]
+            st.write("### Input\n", input_for_agent1)
+            st.write("### Output\n", agent1_output_text)
+        except (KeyError, IndexError) as e:
+            st.write(f"Error parsing Agent1 chunk: {e}")
+
+    # -- Agent2
+    with st.expander("Agent2: Document Search", expanded=False):
+        try:
+            input_for_agent2 = agent2_chunk["results"]["message"]["content_blocks"][0]["contents"][0]["text"]
+            # same approach
+            agent2_output_text = agent2_chunk["results"]["message"]["text"]
+            st.write("### Input\n", input_for_agent2)
+            st.write("### Output\n", agent2_output_text)
+        except (KeyError, IndexError) as e:
+            st.write(f"Error parsing Agent2 chunk: {e}")
+
+    # ---------------------------------------------------------
+    # 4) Show entire JSON if you want
+    # ---------------------------------------------------------
+    st.write("---")
+    #st_stream_json_output(result)
