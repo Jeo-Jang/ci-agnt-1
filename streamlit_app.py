@@ -274,7 +274,7 @@ TWEAKS = {
     "input_value": "",
     "json_mode": False,
     "max_iterations": 15,
-    "max_tokens": None,
+    "max_tokens": 0,
     "model_kwargs": {},
     "model_name": "gpt-4o",
     "n_messages": 100,
