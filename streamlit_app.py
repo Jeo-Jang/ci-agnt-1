@@ -105,7 +105,7 @@ TWEAKS = {
     "template": "{text}"
   },
   "Prompt-BrqAt": {
-    "template": "{context}\n\n---\n\nGiven the context above, answer the question as best as possible.\nHOWEVER, If there is no findings, please leave it empty and state there is no data on the database and additional web search data will complete this.\nName the Title as: [Title, vector database]\nPlease also provide the page number of the evidence. \n\n Question: {question}\n\nAnswer: ",
+    "template": "TASK: {context}\n\n---\n\nGiven the context above, answer the question as best as possible.\n Question: {question}\n\nAnswer: ,\n FORMAT: Name the Title as Company Name, Vector database \nPlease also provide the page number of the evidence. SUCCESS CRITERIA: The Search queation company name and topics are matching with findings. ",
     "tool_placeholder": "",
     "context": "",
     "question": ""
@@ -591,4 +591,4 @@ if submitted and company:
     # 4) Show entire JSON if you want
     # ---------------------------------------------------------
     st.write("---")
-    #st_stream_json_output(result)
+    st_stream_json_output(result)
